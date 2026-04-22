@@ -1,65 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Raw Video Clipper</title>
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+    <title>Video Workflow Dashboard</title>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; padding: 50px; }
-        .container { max-width: 600px; margin: auto; border: 1px solid #444; padding: 20px; border-radius: 10px; }
-        input, button { margin: 10px; padding: 10px; border-radius: 5px; border: none; }
-        button { background: #ff4500; color: white; cursor: pointer; font-weight: bold; }
-        #log { font-size: 12px; color: #888; margin-top: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: white; display: flex; justify-content: center; padding: 40px; }
+        .app-container { width: 100%; max-width: 500px; background: #1e1e1e; padding: 30px; border-radius: 12px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .section { margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #333; }
+        h2 { color: #fe2c55; font-size: 1.2rem; margin-top: 0; }
+        label { display: block; margin: 10px 0 5px; font-size: 0.9rem; color: #bbb; }
+        input, select, textarea { width: 100%; padding: 10px; background: #2b2b2b; border: 1px solid #444; color: white; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; margin-top: 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-login { background: white; color: black; }
+        .btn-post { background: #fe2c55; color: white; }
+        .btn-post:hover { background: #ef2950; }
+        .user-pill { display: flex; align-items: center; background: #2b2b2b; padding: 10px; border-radius: 50px; margin-top: 10px; border: 1px solid #fe2c55; }
+        .avatar { width: 30px; height: 30px; background: #555; border-radius: 50%; margin-right: 10px; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>✂️ Video Clipper</h1>
-    <p>No login. No server. Just your browser.</p>
-    
-    <input type="file" id="uploader" accept="video/*"><br>
-    <label>Start (sec):</label> <input type="number" id="start" value="0">
-    <label>End (sec):</label> <input type="number" id="end" value="5"><br>
-    
-    <button id="exec">Clip Video</button>
-    <div id="log">Status: Waiting for file...</div>
+<div class="app-container">
+    <div class="section" id="auth-section">
+        <h2>1. Authentication</h2>
+        <p style="font-size: 0.8rem; color: #888;">Connect your TikTok account to begin.</p>
+        <button class="btn-login" onclick="simulateLogin()">Login with TikTok</button>
+        <div id="user-display" class="hidden">
+            <div class="user-pill">
+                <div class="avatar"></div>
+                <span id="username">@Creator_Demo</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>2. Video Processor</h2>
+        <label>Select Local Video</label>
+        <input type="file" accept="video/*">
+        <div style="display: flex; gap: 10px;">
+            <div style="flex: 1;">
+                <label>Start (sec)</label>
+                <input type="number" value="0">
+            </div>
+            <div style="flex: 1;">
+                <label>End (sec)</label>
+                <input type="number" value="15">
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>3. Post Settings</h2>
+        <label>Caption & Hashtags</label>
+        <textarea rows="3" placeholder="Enter your TikTok caption here..."></textarea>
+        
+        <label>Privacy Setting</label>
+        <select>
+            <option>Public</option>
+            <option>Friends Only</option>
+            <option>Private</option>
+        </select>
+
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <input type="checkbox" style="width: auto;"> Branded Content / Paid Partnership
+        </label>
+
+        <button class="btn-post" onclick="simulatePost()">Post to TikTok</button>
+        <p id="status" style="text-align: center; font-size: 0.9rem; margin-top: 10px; color: #2af0ea;"></p>
+    </div>
 </div>
 
 <script>
-    const { createFFmpeg, fetchFile } = FFmpeg;
-    const ffmpeg = createFFmpeg({ log: true });
+    function simulateLogin() {
+        document.getElementById('user-display').classList.remove('hidden');
+        document.querySelector('.btn-login').innerText = "Account Connected";
+        document.getElementById('status').innerText = "Authenticated via OAuth 2.0";
+    }
 
-    const el = document.getElementById('log');
-    const btn = document.getElementById('exec');
-
-    btn.onclick = async () => {
-        const file = document.getElementById('uploader').files[0];
-        if (!file) return alert("Select a file first");
-
-        const start = document.getElementById('start').value;
-        const end = document.getElementById('end').value;
-        const duration = end - start;
-
-        el.innerText = "Status: Loading FFmpeg engine (Wait 5s)...";
-        if (!ffmpeg.isLoaded()) await ffmpeg.load();
-
-        el.innerText = "Status: Processing video...";
-        ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
-
-        // The "Stupid" CLI command run inside your browser
-        await ffmpeg.run('-i', 'input.mp4', '-ss', `${start}`, '-t', `${duration}`, '-c', 'copy', 'output.mp4');
-
-        const data = ffmpeg.FS('readFile', 'output.mp4');
-        
-        const videoUrl = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }));
-        const a = document.createElement('a');
-        a.href = videoUrl;
-        a.download = "clipped_video.mp4";
-        a.click();
-
-        el.innerText = "Status: Done! Download started.";
+    function simulatePost() {
+        const status = document.getElementById('status');
+        status.innerText = "Initializing Upload...";
+        setTimeout(() => {
+            status.innerText = "Processing Video Chunks...";
+            setTimeout(() => {
+                status.innerText = "Video Published Successfully!";
+            }, 1500);
+        }, 1000);
     }
 </script>
+
 </body>
 </html>
